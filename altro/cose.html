@@ -12,6 +12,412 @@
     <link rel="stylesheet" href="../css/style.css">
     <!-- Assicurati che Font Awesome sia linkato per le icone -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <!-- Libreria html2pdf.js per generare PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* Stili per la checklist interattiva in cose.html */
+        .checklist li {
+            display: flex; /* Rende l'elemento lista un contenitore flex */
+            align-items: center; /* Allinea verticalmente gli elementi al centro */
+            justify-content: space-between; /* Spinge checkbox/label a sinistra e quantità/note a destra */
+            padding: 8px 0; /* Aumenta il padding per un aspetto più spazioso */
+            border-bottom: 1px dashed #eee; /* Linea tratteggiata per separare gli item */
+            transition: background-color 0.2s ease;
+            gap: 10px; /* Spazio tra i vari elementi all'interno del li */
+        }
+
+        .checklist li:last-child {
+            border-bottom: none; /* Rimuove il bordo dall'ultimo elemento */
+        }
+
+        .checklist li:hover {
+            background-color: #f9f9f9; /* Sfondo leggero al passaggio del mouse */
+        }
+
+        .checklist li label {
+            display: flex; /* Per allineare checkbox e testo */
+            align-items: center;
+            gap: 10px; /* Spazio tra checkbox e testo */
+            cursor: pointer; /* Indica che l'elemento è cliccabile */
+            flex-grow: 1; /* Permette alla label di occupare lo spazio disponibile */
+            /* padding-right: 10px; Rimosso, gestito dal gap del li */
+        }
+
+        .checklist input[type="checkbox"] {
+            transform: scale(1.2); /* Ingrandisce leggermente la checkbox */
+            flex-shrink: 0; /* Impedisce alla checkbox di restringersi */
+            accent-color: #3f51b5; /* Colore dell'accento per la checkbox */
+        }
+
+        .checklist li.checked-item {
+            text-decoration: line-through; /* Testo barrato quando spuntato */
+            color: #888; /* Colore più chiaro per gli elementi completati */
+            opacity: 0.8;
+            background-color: #e8f5e9; /* Sfondo leggermente verde per gli item completati */
+        }
+
+        .checklist li.checked-item input[type="number"] {
+            background-color: #e0e0e0; /* Sfondo grigio per input di item completati */
+            border-color: #ccc;
+        }
+
+        /* Stili per l'input quantità nella checklist */
+        .checklist li input[type="number"] {
+            width: 70px; /* Larghezza fissa per l'input quantità */
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 1em;
+            /* Rimuove le freccette di default e altri stili UI */
+            -moz-appearance: none; /* Nasconde le freccette e altri elementi UI su Firefox */
+            appearance: none; /* Nasconde le freccette e altri elementi UI (standard) */
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+            flex-shrink: 0; /* Impedisce all'input di restringersi */
+        }
+
+        /* Nasconde le freccette su Chrome, Safari, Edge */
+        .checklist li input[type="number"]::-webkit-outer-spin-button,
+        .checklist li input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .checklist li input[type="number"]:focus {
+            outline: none;
+            border-color: #3f51b5; /* Bordo blu al focus */
+            box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
+        }
+
+        /* Stile per il pulsante Note per ogni elemento */
+        .item-note-btn {
+            background-color: #6c757d; /* Grigio per il pulsante note dell'elemento */
+            color: white;
+            border: none;
+            padding: 6px 12px; /* Padding più piccolo */
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-weight: normal; /* Meno grassetto */
+            font-size: 0.85em; /* Testo più piccolo */
+            flex-shrink: 0; /* Impedisce al bottone di restringersi */
+        }
+
+        .item-note-btn:hover {
+            background-color: #5a6268; /* Grigio più scuro al hover */
+        }
+
+        /* Stile per i titoli all'interno delle item-card */
+        .item-card h4 {
+            border-bottom: 1px solid #eee; /* Sottolineatura per i sottotitoli */
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Stile per il pulsante Svuota Checklist */
+        #clearChecklistBtn {
+            background-color: #dc3545; /* Rosso per il pulsante di svuotamento */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-right: 10px; /* Spazio tra i bottoni */
+        }
+
+        #clearChecklistBtn:hover {
+            background-color: #c82333; /* Rosso più scuro al hover */
+        }
+
+        /* Stile per il pulsante Aggiungi Note (generale) */
+        #addGeneralNoteBtn {
+            background-color: #28a745; /* Verde per il pulsante note */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-right: 10px; /* Spazio tra i bottoni */
+        }
+
+        #addGeneralNoteBtn:hover {
+            background-color: #218838; /* Verde più scuro al hover */
+        }
+
+        /* Stile per il pulsante Scarica PDF */
+        #downloadPdfBtn {
+            background-color: #007bff; /* Blu per il pulsante PDF */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        #downloadPdfBtn:hover {
+            background-color: #0056b3; /* Blu più scuro al hover */
+        }
+
+        /* Stili per la finestra modale delle note */
+        .notes-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Sfondo semi-trasparente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Assicura che sia sopra tutto */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .notes-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .notes-modal-content {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 600px; /* Larghezza massima per la modale */
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            position: relative; /* Per posizionare il pulsante di chiusura */
+        }
+
+        .notes-modal-overlay.active .notes-modal-content {
+            transform: translateY(0);
+        }
+
+        .notes-modal-content h3 {
+            color: #1a237e;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .notes-modal-content textarea {
+            width: calc(100% - 20px); /* Larghezza completa con padding */
+            height: 250px; /* Altezza fissa per l'area di testo */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Roboto', sans-serif;
+            font-size: 1em;
+            resize: vertical; /* Permette ridimensionamento verticale */
+            margin-bottom: 20px;
+        }
+
+        .notes-modal-actions {
+            display: flex;
+            justify-content: flex-end; /* Allinea i bottoni a destra */
+            gap: 10px;
+        }
+
+        .notes-modal-actions .btn {
+            margin-top: 0; /* Rimuove il margin-top extra */
+        }
+
+        /* Pulsante di chiusura della modale */
+        .notes-modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .notes-modal-close-btn:hover {
+            color: #333;
+        }
+
+        /* Media Queries per la responsività */
+        @media (max-width: 768px) {
+            .checklist li {
+                flex-direction: column; /* Impila checkbox/label e quantità su schermi piccoli */
+                align-items: flex-start; /* Allinea a sinistra */
+                padding: 10px 0;
+            }
+            .checklist li label {
+                width: 100%; /* La label occupa tutta la larghezza */
+                margin-bottom: 5px; /* Spazio sotto la label quando impilata */
+                padding-right: 0;
+            }
+            .checklist li input[type="number"] {
+                width: 100%; /* L'input quantità occupa tutta la larghezza */
+                max-width: 100px; /* Limita la larghezza massima per non essere troppo grande */
+                margin-left: 30px; /* Indenta l'input quantità */
+            }
+            .checklist li .item-note-btn {
+                margin-left: 30px; /* Indenta anche il pulsante note */
+                width: calc(100% - 30px); /* Occupa la larghezza rimanente */
+                max-width: 100px; /* Limita la larghezza massima */
+                text-align: center;
+            }
+
+            /* Modale su schermi piccoli */
+            .notes-modal-content {
+                padding: 20px;
+                width: 95%; /* Leggermente più larga su schermi molto piccoli */
+            }
+            .notes-modal-content h3 {
+                font-size: 1.5em;
+            }
+            .notes-modal-content textarea {
+                height: 200px;
+            }
+        }
+
+        /* Stili specifici per la stampa PDF */
+        @media print {
+            body {
+                background-color: #fff; /* Sfondo bianco per la stampa */
+                color: #000;
+                font-size: 10pt; /* Font più piccolo per la stampa */
+            }
+
+            header, footer, #scrollToTopBtn, .notes-modal-overlay,
+            .page-intro button, /* Nasconde tutti i bottoni nella sezione introduttiva */
+            .item-note-btn, /* Nasconde i bottoni "Note" per ogni elemento */
+            .quantity-input /* Nasconde gli input numerici */
+            {
+                display: none !important; /* Nasconde elementi non necessari per la stampa */
+            }
+
+            .container {
+                padding: 0;
+                margin: 0;
+                max-width: none; /* Usa tutta la larghezza disponibile */
+            }
+
+            .page-intro {
+                background-color: #fff; /* Rimuove sfondo colorato */
+                box-shadow: none;
+                padding: 10px 0;
+                margin-bottom: 10px;
+            }
+
+            .page-intro h2 {
+                font-size: 1.5em;
+                margin-bottom: 5px;
+            }
+
+            .page-intro p {
+                font-size: 0.9em;
+                margin-bottom: 10px;
+            }
+
+            .content-section {
+                background-color: #fff;
+                box-shadow: none;
+                padding: 15px 0;
+                margin-bottom: 15px;
+                border: 1px solid #eee; /* Aggiunge un bordo leggero alle sezioni */
+                break-inside: avoid; /* Evita di spezzare le sezioni tra le pagine */
+                page-break-inside: avoid; /* Vecchio standard per compatibilità */
+            }
+
+            .content-section h3 {
+                font-size: 1.2em;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 5px;
+                margin-bottom: 10px;
+            }
+
+            .item-card {
+                box-shadow: none;
+                border: none;
+                padding: 5px 0;
+                margin-bottom: 5px;
+                break-inside: avoid; /* Evita di spezzare le schede degli elementi tra le pagine */
+                page-break-inside: avoid; /* Vecchio standard per compatibilità */
+            }
+
+            .item-card h4 {
+                font-size: 1.1em;
+                border-bottom: none;
+                padding-bottom: 0;
+                margin-bottom: 5px;
+            }
+
+            .checklist {
+                list-style: none; /* Rimuove i pallini predefiniti */
+                padding-left: 0;
+                break-inside: avoid; /* Evita di spezzare le liste tra le pagine */
+                page-break-inside: avoid; /* Vecchio standard per compatibilità */
+            }
+
+            .checklist li {
+                display: flex;
+                flex-direction: row; /* Mantiene su una riga se possibile */
+                align-items: flex-start; /* Allinea in alto, utile per note lunghe */
+                justify-content: flex-start; /* Allinea a sinistra */
+                padding: 2px 0;
+                border-bottom: none; /* Rimuove i bordi tratteggiati */
+                font-size: 0.9em;
+                break-inside: avoid; /* Evita di spezzare i singoli elementi tra le pagine */
+                page-break-inside: avoid; /* Vecchio standard per compatibilità */
+            }
+
+            .checklist li label {
+                flex-grow: 0; /* Non si espande */
+                width: auto;
+                margin-right: 5px; /* Spazio tra checkbox e testo */
+                padding-right: 0;
+            }
+
+            .checklist input[type="checkbox"] {
+                transform: scale(0.8); /* Rimpicciolisce la checkbox per la stampa */
+                margin-right: 5px; /* Spazio tra checkbox e testo */
+            }
+
+            .checklist li.checked-item {
+                text-decoration: line-through;
+                color: #555;
+                opacity: 1;
+                background-color: transparent; /* Rimuove sfondo verde */
+            }
+
+            /* Visualizza la quantità come testo */
+            .checklist li::after {
+                content: attr(data-quantity); /* Usa un attributo dati per la quantità */
+                margin-left: auto; /* Sposta la quantità a destra */
+                font-weight: bold;
+                color: #333;
+                min-width: 20px; /* Assicura spazio per il numero */
+                text-align: right;
+            }
+
+            /* Nasconde i pulsanti note e quantity input effettivi */
+            .item-note-btn, .quantity-input {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -34,7 +440,11 @@
         <section class="page-intro">
             <h2>Cosa Mettere in Valigia per Malta</h2>
             <p>Preparare la valigia perfetta è il primo passo per un viaggio senza pensieri. Ecco una lista dettagliata di tutto ciò che ti servirà per goderti al meglio la tua avventura maltese, dal clima mediterraneo alle attività previste.</p>
-            <button id="clearChecklistBtn" class="btn btn-small" style="margin-top: 20px;">Svuota Checklist</button>
+            <div class="button-group" style="margin-top: 20px;">
+                <button id="clearChecklistBtn" class="btn btn-small">Svuota Checklist</button>
+                <button id="addGeneralNoteBtn" class="btn btn-small">Note Generali</button>
+                <button id="downloadPdfBtn" class="btn btn-small">Scarica PDF</button>
+            </div>
         </section>
 
         <!-- Sezione: Abbigliamento -->
@@ -45,31 +455,31 @@
             <div class="item-card">
                 <h4>Per il Giorno:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Magliette e top leggeri (cotone, lino)</label></li>
-                    <li><label><input type="checkbox"> Pantaloncini, gonne, vestiti estivi</label></li>
-                    <li><label><input type="checkbox"> Costumi da bagno (almeno 2)</label></li>
-                    <li><label><input type="checkbox"> Copricostume o pareo</label></li>
-                    <li><label><input type="checkbox"> Cappello o berretto per il sole</label></li>
-                    <li><label><input type="checkbox"> Occhiali da sole</label></li>
+                    <li><label><input type="checkbox"> Magliette e top leggeri (cotone, lino)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Pantaloncini, gonne, vestiti estivi</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Costumi da bagno (almeno 2)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="2"></li>
+                    <li><label><input type="checkbox"> Copricostume o pareo</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Cappello o berretto per il sole</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Occhiali da sole</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
 
             <div class="item-card">
                 <h4>Per la Sera:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Un maglioncino leggero o una felpa (per l'aria condizionata o serate più fresche)</label></li>
-                    <li><label><input type="checkbox"> Pantaloni lunghi leggeri o jeans</label></li>
-                    <li><label><input type="checkbox"> Camicie o vestiti più eleganti (se prevedi uscite serali)</label></li>
+                    <li><label><input type="checkbox"> Un maglioncino leggero o una felpa (per l'aria condizionata o serate più fresche)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Pantaloni lunghi leggeri o jeans</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Camicie o vestiti più eleganti (se prevedi uscite serali)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
 
             <div class="item-card">
                 <h4>Calzature:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Sandali o ciabatte da mare</label></li>
-                    <li><label><input type="checkbox"> Scarpe comode per camminare (sneakers o scarpe da ginnastica)</label></li>
-                    <li><label><input type="checkbox"> Scarpe eleganti (opzionali, per la sera)</label></li>
-                    <li><label><input type="checkbox"> Scarpette da scoglio (consigliate per alcune spiagge rocciose)</label></li>
+                    <li><label><input type="checkbox"> Sandali o ciabatte da mare</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Scarpe comode per camminare (sneakers o scarpe da ginnastica)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Scarpe eleganti (opzionali, per la sera)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Scarpette da scoglio (consigliate per alcune spiagge rocciose)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
         </section>
@@ -82,20 +492,20 @@
             <div class="item-card">
                 <h4>Documenti di Viaggio:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Carta d'identità valida per l'espatrio o Passaporto</label></li>
-                    <li><label><input type="checkbox"> Biglietti aerei/nave (cartacei o digitali)</label></li>
-                    <li><label><input type="checkbox"> Conferma prenotazione alloggio</label></li>
-                    <li><label><input type="checkbox"> Patente di guida (se prevedi di noleggiare un'auto)</label></li>
-                    <li><label><input type="checkbox"> Assicurazione di viaggio (se stipulata)</label></li>
-                    <li><label><input type="checkbox"> Tessera Sanitaria Europea (TEAM)</label></li>
+                    <li><label><input type="checkbox"> Carta d'identità valida per l'espatrio o Passaporto</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Biglietti aerei/nave (cartacei o digitali)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Conferma prenotazione alloggio</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Patente di guida (se prevedi di noleggiare un'auto)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Assicurazione di viaggio (se stipulata)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Tessera Sanitaria Europea (TEAM)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
 
             <div class="item-card">
                 <h4>Copie e Digitalizzazione:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Fotocopie di tutti i documenti importanti (da tenere separate dagli originali)</label></li>
-                    <li><label><input type="checkbox"> Scansioni digitali dei documenti (su cloud o email)</label></li>
+                    <li><label><input type="checkbox"> Fotocopie di tutti i documenti importanti (da tenere separate dagli originali)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Scansioni digitali dei documenti (su cloud o email)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
         </section>
@@ -108,25 +518,25 @@
             <div class="item-card">
                 <h4>Farmaci e Primo Soccorso:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Farmaci personali (con ricetta se necessaria)</label></li>
-                    <li><label><input type="checkbox"> Antidolorifici/Antinfiammatori</label></li>
-                    <li><label><input type="checkbox"> Cerotti, disinfettante</label></li>
-                    <li><label><input type="checkbox"> Repellente per zanzare</label></li>
-                    <li><label><input type="checkbox"> Crema solare ad alta protezione</label></li>
-                    <li><label><input type="checkbox"> Doposole</label></li>
-                    <li><label><input type="checkbox"> Farmaci per mal di stomaco/diarrea (l'acqua del rubinetto a Malta ha un sapore particolare e non è consigliabile berla)</label></li>
+                    <li><label><input type="checkbox"> Farmaci personali (con ricetta se necessaria)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Antidolorifici/Antinfiammatori</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Cerotti, disinfettante</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Repellente per zanzare</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Crema solare ad alta protezione</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Doposole</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Farmaci per mal di stomaco/diarrea (l'acqua del rubinetto a Malta ha un sapore particolare e non è consigliabile berla)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
 
             <div class="item-card">
                 <h4>Igiene Personale:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Spazzolino, dentifricio, filo interdentale</label></li>
-                    <li><label><input type="checkbox"> Shampoo, balsamo, bagnoschiuma (formato viaggio)</label></li>
-                    <li><label><input type="checkbox"> Deodorante</label></li>
-                    <li><label><input type="checkbox"> Spazzola/pettine</label></li>
-                    <li><label><input type="checkbox"> Crema idratante</label></li>
-                    <li><label><input type="checkbox"> Salviettine umidificate</label></li>
+                    <li><label><input type="checkbox"> Spazzolino, dentifricio, filo interdentale</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Shampoo, balsamo, bagnoschiuma (formato viaggio)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Deodorante</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Spazzola/pettine</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Crema idratante</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Salviettine umidificate</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
         </section>
@@ -139,11 +549,11 @@
             <div class="item-card">
                 <h4>Dispositivi:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Smartphone e caricabatterie</label></li>
-                    <li><label><input type="checkbox"> Power bank (caricabatterie portatile)</label></li>
-                    <li><label><input type="checkbox"> Adattatore universale per prese di tipo G (standard UK/Malta)</label></li>
-                    <li><label><input type="checkbox"> Cuffie</label></li>
-                    <li><label><input type="checkbox"> Fotocamera e schede di memoria extra (se usi una fotocamera dedicata)</label></li>
+                    <li><label><input type="checkbox"> Smartphone e caricabatterie</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Power bank (caricabatterie portatile)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Adattatore universale per prese di tipo G (standard UK/Malta)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Cuffie</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Fotocamera e schede di memoria extra (se usi una fotocamera dedicata)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
         </section>
@@ -156,22 +566,22 @@
             <div class="item-card">
                 <h4>Utilità:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Zaino piccolo o borsa a tracolla per le escursioni giornaliere</label></li>
-                    <li><label><input type="checkbox"> Borraccia riutilizzabile (per l'acqua)</label></li>
-                    <li><label><input type="checkbox"> Piccolo ombrello o k-way (per eventuali acquazzoni improvvisi)</label></li>
-                    <li><label><input type="checkbox"> Libro/e-reader o riviste</label></li>
-                    <li><label><input type="checkbox"> Blocco note e penna</label></li>
-                    <li><label><input type="checkbox"> Sacchetti per la biancheria sporca</label></li>
-                    <li><label><input type="checkbox"> Lucchetto per valigia (se necessario)</label></li>
+                    <li><label><input type="checkbox"> Zaino piccolo o borsa a tracolla per le escursioni giornaliere</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Borraccia riutilizzabile (per l'acqua)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Piccolo ombrello o k-way (per eventuali acquazzoni improvvisi)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Libro/e-reader o riviste</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Blocco note e penna</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Sacchetti per la biancheria sporca</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Lucchetto per valigia (se necessario)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
 
             <div class="item-card">
                 <h4>Denaro:</h4>
                 <ul class="checklist">
-                    <li><label><input type="checkbox"> Contanti (Euro)</label></li>
-                    <li><label><input type="checkbox"> Carte di credito/debito</label></li>
-                    <li><label><input type="checkbox"> Piccola borsa porta-valori da indossare sotto i vestiti (per sicurezza)</label></li>
+                    <li><label><input type="checkbox"> Contanti (Euro)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Carte di credito/debito</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
+                    <li><label><input type="checkbox"> Piccola borsa porta-valori da indossare sotto i vestiti (per sicurezza)</label><span class="quantity-display"></span><button class="item-note-btn btn btn-small">Note</button><input type="hidden" class="quantity-input" value="1"></li>
                 </ul>
             </div>
         </section>
@@ -191,60 +601,373 @@
 
     <button id="scrollToTopBtn" title="Torna su">⬆</button>
 
+    <!-- Modale per le note -->
+    <div id="notesModalOverlay" class="notes-modal-overlay">
+        <div class="notes-modal-content">
+            <button class="notes-modal-close-btn" id="notesModalCloseBtn">&times;</button>
+            <h3>Le Tue Note di Viaggio</h3>
+            <textarea id="notesTextarea" placeholder="Scrivi qui le tue note..."></textarea>
+            <div class="notes-modal-actions">
+                <button id="saveNoteBtn" class="btn">Salva Note</button>
+                <button id="clearNoteBtn" class="btn btn-small">Svuota Note</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const checklistItems = document.querySelectorAll('.checklist input[type="checkbox"]');
-            const clearButton = document.getElementById('clearChecklistBtn');
-            const localStorageKey = 'malta_packing_checklist';
+            const allChecklistItems = document.querySelectorAll('.checklist li');
+            const clearChecklistButton = document.getElementById('clearChecklistBtn');
+            const addGeneralNoteButton = document.getElementById('addGeneralNoteBtn');
+            const downloadPdfButton = document.getElementById('downloadPdfBtn');
+            const notesModalOverlay = document.getElementById('notesModalOverlay');
+            const notesModalCloseBtn = document.getElementById('notesModalCloseBtn');
+            const notesTextarea = document.getElementById('notesTextarea');
+            const saveNoteBtn = document.getElementById('saveNoteBtn');
+            const clearNoteBtn = document.getElementById('clearNoteBtn');
 
-            // Funzione per caricare lo stato della checklist
+            const checklistLocalStorageKey = 'malta_packing_checklist_data';
+            const generalNotesLocalStorageKey = 'malta_general_travel_notes';
+
+            let currentEditingItemIndex = null;
+
+            // Assegna un indice unico a ogni elemento della checklist e aggiungi listener ai bottoni "Note"
+            allChecklistItems.forEach((li, index) => {
+                li.dataset.itemIndex = index;
+                const itemNoteButton = li.querySelector('.item-note-btn');
+                const quantityInput = li.querySelector('.quantity-input'); // Seleziona l'input hidden
+                const quantityDisplay = li.querySelector('.quantity-display'); // Seleziona lo span per la visualizzazione
+
+                // Imposta il testo iniziale dello span della quantità
+                if (quantityDisplay && quantityInput) {
+                    quantityDisplay.textContent = quantityInput.value;
+                }
+
+                if (itemNoteButton) {
+                    itemNoteButton.addEventListener('click', () => {
+                        currentEditingItemIndex = index;
+                        notesModalOverlay.classList.add('active');
+                        loadSpecificNote(index);
+                    });
+                }
+            });
+
+            // --- Funzioni per la Checklist (Stato, Quantità, Note per ogni elemento) ---
+
             const loadChecklistState = () => {
-                const savedState = localStorage.getItem(localStorageKey);
+                const savedState = localStorage.getItem(checklistLocalStorageKey);
                 if (savedState) {
                     const state = JSON.parse(savedState);
-                    checklistItems.forEach((checkbox, index) => {
-                        if (state[index] !== undefined) {
-                            checkbox.checked = state[index];
-                            if (checkbox.checked) {
-                                checkbox.closest('li').classList.add('checked-item');
-                            } else {
-                                checkbox.closest('li').classList.remove('checked-item');
+                    allChecklistItems.forEach((li, index) => {
+                        const checkbox = li.querySelector('input[type="checkbox"]');
+                        const quantityInput = li.querySelector('.quantity-input');
+                        const quantityDisplay = li.querySelector('.quantity-display');
+
+                        if (state[index]) {
+                            if (checkbox) {
+                                checkbox.checked = state[index].checked;
+                                if (checkbox.checked) {
+                                    li.classList.add('checked-item');
+                                } else {
+                                    li.classList.remove('checked-item');
+                                }
+                            }
+                            if (quantityInput) {
+                                quantityInput.value = state[index].quantity;
+                                if (quantityDisplay) {
+                                    quantityDisplay.textContent = state[index].quantity;
+                                }
                             }
                         }
                     });
                 }
             };
 
-            // Funzione per salvare lo stato della checklist
             const saveChecklistState = () => {
-                const state = Array.from(checklistItems).map(checkbox => checkbox.checked);
-                localStorage.setItem(localStorageKey, JSON.stringify(state));
+                const state = [];
+                allChecklistItems.forEach((li, index) => {
+                    const checkbox = li.querySelector('input[type="checkbox"]');
+                    const quantityInput = li.querySelector('.quantity-input');
+                    let itemNote = "";
+                    const savedItemState = JSON.parse(localStorage.getItem(checklistLocalStorageKey));
+                    if (savedItemState && savedItemState[index] && savedItemState[index].note) {
+                        itemNote = savedItemState[index].note;
+                    }
+
+                    state[index] = {
+                        checked: checkbox ? checkbox.checked : false,
+                        quantity: quantityInput ? quantityInput.value : 0,
+                        note: itemNote
+                    };
+                });
+                localStorage.setItem(checklistLocalStorageKey, JSON.stringify(state));
             };
 
-            // Aggiungi listener per i cambiamenti delle checkbox
-            checklistItems.forEach(checkbox => {
-                checkbox.addEventListener('change', (event) => {
-                    if (event.target.checked) {
-                        event.target.closest('li').classList.add('checked-item');
-                    } else {
-                        event.target.closest('li').classList.remove('checked-item');
-                    }
-                    saveChecklistState();
-                });
-            });
+            allChecklistItems.forEach(li => {
+                const checkbox = li.querySelector('input[type="checkbox"]');
+                const quantityInput = li.querySelector('.quantity-input');
+                const quantityDisplay = li.querySelector('.quantity-display');
 
-            // Listener per il pulsante "Svuota Checklist"
-            clearButton.addEventListener('click', () => {
-                if (confirm('Sei sicuro di voler svuotare tutta la checklist?')) {
-                    checklistItems.forEach(checkbox => {
-                        checkbox.checked = false;
-                        checkbox.closest('li').classList.remove('checked-item');
+                if (checkbox) {
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
+                            li.classList.add('checked-item');
+                        } else {
+                            li.classList.remove('checked-item');
+                        }
+                        saveChecklistState();
                     });
-                    localStorage.removeItem(localStorageKey); // Rimuove lo stato salvato
+                }
+
+                // Listener per l'input numerico (ora hidden)
+                if (quantityInput) {
+                    quantityInput.addEventListener('input', () => {
+                        if (quantityDisplay) {
+                            quantityDisplay.textContent = quantityInput.value; // Aggiorna lo span
+                        }
+                        saveChecklistState();
+                    });
+                    quantityInput.addEventListener('change', () => {
+                        if (quantityDisplay) {
+                            quantityDisplay.textContent = quantityInput.value; // Aggiorna lo span
+                        }
+                        saveChecklistState();
+                    });
                 }
             });
 
-            // Carica lo stato all'avvio della pagina
+            clearChecklistButton.addEventListener('click', () => {
+                if (confirm('Sei sicuro di voler svuotare tutta la checklist? Questo cancellerà anche le quantità e le note specifiche per ogni elemento.')) {
+                    allChecklistItems.forEach(li => {
+                        const checkbox = li.querySelector('input[type="checkbox"]');
+                        const quantityInput = li.querySelector('.quantity-input');
+                        const quantityDisplay = li.querySelector('.quantity-display');
+
+                        if (checkbox) {
+                            checkbox.checked = false;
+                            li.classList.remove('checked-item');
+                        }
+                        if (quantityInput) {
+                            quantityInput.value = quantityInput.getAttribute('value') || 0;
+                            if (quantityDisplay) {
+                                quantityDisplay.textContent = quantityInput.value;
+                            }
+                        }
+                    });
+                    localStorage.removeItem(checklistLocalStorageKey);
+                }
+            });
+
+            // --- Funzioni per le Note (Generali e Specifiche) ---
+
+            const loadSpecificNote = (index) => {
+                const savedState = localStorage.getItem(checklistLocalStorageKey);
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    if (state[index] && state[index].note) {
+                        notesTextarea.value = state[index].note;
+                    } else {
+                        notesTextarea.value = '';
+                    }
+                } else {
+                    notesTextarea.value = '';
+                }
+            };
+
+            const loadGeneralNotes = () => {
+                const savedNotes = localStorage.getItem(generalNotesLocalStorageKey);
+                notesTextarea.value = savedNotes || '';
+            };
+
+            const saveNote = () => {
+                if (currentEditingItemIndex !== null) {
+                    const savedState = JSON.parse(localStorage.getItem(checklistLocalStorageKey)) || [];
+                    if (!savedState[currentEditingItemIndex]) {
+                        savedState[currentEditingItemIndex] = { checked: false, quantity: 0, note: "" };
+                    }
+                    savedState[currentEditingItemIndex].note = notesTextarea.value;
+                    localStorage.setItem(checklistLocalStorageKey, JSON.stringify(savedState));
+                    alert('Nota elemento salvata con successo!');
+                } else {
+                    localStorage.setItem(generalNotesLocalStorageKey, notesTextarea.value);
+                    alert('Note generali salvate con successo!');
+                }
+                notesModalOverlay.classList.remove('active');
+            };
+
+            const clearNote = () => {
+                if (confirm('Sei sicuro di voler svuotare questa nota?')) {
+                    if (currentEditingItemIndex !== null) {
+                        const savedState = JSON.parse(localStorage.getItem(checklistLocalStorageKey)) || [];
+                        if (savedState[currentEditingItemIndex]) {
+                            savedState[currentEditingItemIndex].note = '';
+                            localStorage.setItem(checklistLocalStorageKey, JSON.stringify(savedState));
+                        }
+                        alert('Nota elemento svuotata!');
+                    } else {
+                        notesTextarea.value = '';
+                        localStorage.removeItem(generalNotesLocalStorageKey);
+                        alert('Note generali svuotate!');
+                    }
+                    notesTextarea.value = '';
+                }
+            };
+
+            addGeneralNoteButton.addEventListener('click', () => {
+                currentEditingItemIndex = null;
+                notesModalOverlay.classList.add('active');
+                loadGeneralNotes();
+            });
+
+            notesModalCloseBtn.addEventListener('click', () => {
+                notesModalOverlay.classList.remove('active');
+            });
+
+            saveNoteBtn.addEventListener('click', saveNote);
+            clearNoteBtn.addEventListener('click', clearNote);
+
+            // --- Funzione per il Download PDF ---
+            downloadPdfButton.addEventListener('click', () => {
+                // Show loading spinner
+                const loadingSpinner = document.createElement('div');
+                loadingSpinner.id = 'loadingSpinner';
+                loadingSpinner.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    border: 8px solid #f3f3f3;
+                    border-top: 8px solid #3f51b5;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    animation: spin 1s linear infinite;
+                    z-index: 1001;
+                `;
+                document.body.appendChild(loadingSpinner);
+
+                const style = document.createElement('style');
+                style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+                document.head.appendChild(style);
+
+                // Prepara il contenuto per la stampa
+                const printContent = document.createElement('div');
+                printContent.style.cssText = `
+                    font-family: 'Roboto', sans-serif;
+                    color: #000;
+                    padding: 10mm;
+                `;
+
+                printContent.innerHTML += `
+                    <h1 style="text-align: center; font-family: 'Oswald', sans-serif; color: #1a237e; font-size: 24pt; margin-bottom: 5mm;">Cosa Mettere in Valigia per Malta</h1>
+                    <p style="text-align: center; font-family: 'Roboto', sans-serif; font-size: 10pt; color: #555; margin-bottom: 10mm;">Checklist generata il ${new Date().toLocaleDateString('it-IT')}</p>
+                `;
+
+                // Aggiungi le sezioni della checklist
+                document.querySelectorAll('main .content-section').forEach(section => {
+                    const sectionTitle = section.querySelector('h3');
+                    const sectionIntro = section.querySelector('p:not(.image-caption)');
+
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.style.cssText = `
+                        margin-bottom: 15mm;
+                        page-break-inside: avoid; /* Ensure section stays together */
+                    `;
+
+                    if (sectionTitle) {
+                        sectionDiv.innerHTML += `<h3 style="font-family: 'Oswald', sans-serif; color: #1a237e; font-size: 14pt; margin-top: 5mm; margin-bottom: 3mm; border-bottom: 1px solid #ccc; padding-bottom: 2mm;">${sectionTitle.textContent}</h3>`;
+                    }
+                    if (sectionIntro) {
+                        sectionDiv.innerHTML += `<p style="font-family: 'Roboto', sans-serif; font-size: 9pt; color: #666; margin-bottom: 5mm;">${sectionIntro.textContent}</p>`;
+                    }
+
+                    section.querySelectorAll('.item-card').forEach(itemCard => {
+                        const cardTitle = itemCard.querySelector('h4');
+                        if (cardTitle) {
+                            sectionDiv.innerHTML += `<h4 style="font-family: 'Roboto', sans-serif; color: #3f51b5; font-size: 11pt; margin-top: 5mm; margin-bottom: 3mm;">${cardTitle.textContent}</h4>`;
+                        }
+
+                        const checklistUl = itemCard.querySelector('.checklist');
+                        if (checklistUl) {
+                            const ulElement = document.createElement('ul');
+                            ulElement.style.cssText = `
+                                list-style: none;
+                                padding-left: 0;
+                                margin: 0;
+                                page-break-inside: avoid; /* Ensure list stays together */
+                            `;
+
+                            Array.from(checklistUl.children).forEach(li => {
+                                const checkbox = li.querySelector('input[type="checkbox"]');
+                                const text = li.querySelector('label').textContent.trim();
+                                const quantity = li.querySelector('.quantity-input').value;
+                                const note = (JSON.parse(localStorage.getItem(checklistLocalStorageKey)) || [])[li.dataset.itemIndex]?.note || '';
+
+                                const liElement = document.createElement('li');
+                                liElement.style.cssText = `
+                                    display: flex;
+                                    align-items: flex-start;
+                                    margin-bottom: 2mm;
+                                    font-size: 9pt;
+                                    line-height: 1.2;
+                                    page-break-inside: avoid; /* Ensure list item stays together */
+                                `;
+
+                                let itemHtml = '';
+                                if (checkbox && checkbox.checked) {
+                                    itemHtml += `<span style="font-family: 'Font Awesome 5 Free'; font-weight: 900; color: #28a745; margin-right: 3mm;">&#xf00c;</span>`; // Checkmark
+                                    liElement.style.textDecoration = 'line-through';
+                                    liElement.style.color = '#555';
+                                } else {
+                                    itemHtml += `<span style="font-family: 'Font Awesome 5 Free'; font-weight: 900; color: #6c757d; margin-right: 3mm;">&#xf096;</span>`; // Empty square
+                                }
+
+                                itemHtml += `<span style="flex-grow: 1;">${text}`;
+                                if (quantity && parseInt(quantity) > 0) {
+                                    itemHtml += ` (x${quantity})`;
+                                }
+                                itemHtml += `</span>`;
+
+                                if (note) {
+                                    itemHtml += `<span style="font-size: 8pt; color: #6c757d; margin-left: 5mm; font-style: italic;">[Nota: ${note}]</span>`;
+                                }
+
+                                liElement.innerHTML = itemHtml;
+                                ulElement.appendChild(liElement);
+                            });
+                            sectionDiv.appendChild(ulElement);
+                        }
+                    });
+                    printContent.appendChild(sectionDiv);
+                });
+
+                // Aggiungi note generali se presenti
+                const generalNotes = localStorage.getItem(generalNotesLocalStorageKey);
+                if (generalNotes && generalNotes.trim() !== '') {
+                    printContent.innerHTML += `
+                        <h3 style="font-family: 'Oswald', sans-serif; color: #1a237e; font-size: 14pt; margin-top: 10mm; margin-bottom: 5mm; border-bottom: 1px solid #ccc; padding-bottom: 2mm;">Note Generali</h3>
+                        <p style="font-family: 'Roboto', sans-serif; font-size: 9pt; color: #444; white-space: pre-wrap;">${generalNotes}</p>
+                    `;
+                }
+
+                // Opzioni per la generazione del PDF
+                const options = {
+                    margin: 10,
+                    filename: `Malta_Checklist_${new Date().toLocaleDateString('it-IT')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, logging: true, dpi: 192, letterRendering: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // Genera e scarica il PDF
+                html2pdf().set(options).from(printContent).save().then(() => {
+                    // Hide loading spinner after PDF is generated
+                    document.body.removeChild(loadingSpinner);
+                    document.head.removeChild(style); // Clean up the style tag
+                });
+            });
+
+            // Carica lo stato della checklist all'avvio della pagina
             loadChecklistState();
         });
     </script>
