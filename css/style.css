@@ -28,7 +28,7 @@ a {
 }
 
 a:hover {
-    color: #ff5722; /* Arancione al passaggio del mouse */
+    color: white; /* Blu scuro */
 }
 
 /* Header */
@@ -76,12 +76,12 @@ nav ul li a {
 
 nav ul li a:hover,
 nav ul li a.active {
-    background-color: #ff5722; /* Arancione per hover e link attivo */
+    background-color: #1a237e; /* Blu scuro per hover e link attivo */
 }
 
 /* Sezione Introduttiva (page-intro) */
 .page-intro {
-    background-color: #e3f2fd; /* Azzurro chiaro */
+    background-color: #e1eaf5; /* Azzurro chiaro */
     padding: 30px;
     margin-bottom: 30px;
     border-radius: 8px;
