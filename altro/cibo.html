@@ -11,6 +11,286 @@
 
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Librerie per generare PDF: html2canvas non sarà più usato per la generazione del PDF della lista spesa -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* Stili specifici per il modale della lista della spesa */
+        .grocery-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Sfondo semi-trasparente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .grocery-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .grocery-modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            width: 90%;
+            max-width: 700px; /* Larghezza massima per il modale */
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh; /* Limita l'altezza per schermi piccoli */
+        }
+
+        .grocery-modal-overlay.active .grocery-modal-content {
+            transform: translateY(0);
+        }
+
+        .grocery-modal-content h3 {
+            color: #1a237e;
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .grocery-modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.8em;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .grocery-modal-close-btn:hover {
+            color: #333;
+        }
+
+        /* Tabs per le sezioni Colazione, Pranzo, Cena */
+        .grocery-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .grocery-tab-button {
+            background-color: #f0f0f0;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+            border-radius: 8px 8px 0 0;
+            transition: background-color 0.3s, color 0.3s;
+            margin: 0 5px;
+        }
+
+        .grocery-tab-button.active {
+            background-color: #3f51b5;
+            color: white;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .grocery-tab-button:hover:not(.active) {
+            background-color: #e0e0e0;
+        }
+
+        .grocery-tab-content {
+            display: none;
+            flex-grow: 1; /* Permette al contenuto di espandersi */
+            overflow-y: auto; /* Abilita lo scroll se la lista è lunga */
+            padding: 10px 0;
+        }
+
+        .grocery-tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grocery-input-container {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .grocery-input-container input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .grocery-input-container button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+
+        .grocery-input-container button:hover {
+            background-color: #218838;
+        }
+
+        .grocery-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .grocery-list li {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #eee;
+            transition: background-color 0.2s ease;
+        }
+
+        .grocery-list li:last-child {
+            border-bottom: none;
+        }
+
+        .grocery-list li:hover {
+            background-color: #f9f9f9;
+        }
+
+        .grocery-list input[type="checkbox"] {
+            transform: scale(1.2);
+            margin-right: 10px;
+            accent-color: #3f51b5;
+            flex-shrink: 0; /* Impedisce che la checkbox si riduca */
+        }
+
+        .grocery-list li.completed label {
+            text-decoration: line-through;
+            color: #888;
+            opacity: 0.8;
+        }
+        
+        .grocery-list li label {
+            flex-grow: 1; /* Permette al testo di occupare lo spazio */
+            cursor: pointer;
+            padding-right: 10px; /* Spazio a destra del testo per non toccare il pulsante */
+        }
+
+        .grocery-list .remove-item-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: background-color 0.2s ease;
+            margin-left: auto; /* Sposta il pulsante a destra */
+            flex-shrink: 0; /* Impedisce che il pulsante si riduca */
+        }
+
+        .grocery-list .remove-item-btn:hover {
+            background-color: #c82333;
+        }
+
+        /* Stile per il pulsante "Svuota Lista" */
+        .clear-list-btn {
+            background-color: #dc3545; /* Rosso per il pulsante di svuotamento */
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 15px; /* Spazio sopra il bottone */
+            width: 100%; /* Occupa tutta la larghezza */
+            box-sizing: border-box; /* Include padding e border nel calcolo della larghezza */
+        }
+
+        .clear-list-btn:hover {
+            background-color: #c82333; /* Rosso più scuro al hover */
+        }
+
+        /* Stili per lo spinner di caricamento */
+        #loadingSpinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3f51b5;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            z-index: 1001;
+            display: none; /* Inizialmente nascosto */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Media Queries per il modale */
+        @media (max-width: 768px) {
+            .grocery-modal-content {
+                padding: 20px;
+                width: 95%;
+            }
+            .grocery-modal-content h3 {
+                font-size: 1.5em;
+            }
+            .grocery-tab-button {
+                padding: 8px 15px;
+                font-size: 1em;
+            }
+            .grocery-input-container {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .grocery-input-container button {
+                width: 100%;
+            }
+            .grocery-list li {
+                flex-wrap: wrap; /* Permette agli elementi di andare a capo */
+                align-items: flex-start;
+            }
+            .grocery-list li label {
+                width: calc(100% - 30px); /* Spazio per la checkbox */
+                margin-bottom: 5px;
+            }
+            .grocery-list .remove-item-btn {
+                margin-left: 0;
+                width: auto;
+                align-self: flex-end; /* Allinea il pulsante alla fine della riga */
+            }
+            .clear-list-btn {
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -39,7 +319,8 @@
             <h3>Piani Pasti Consigliati</h3>
             <p>Abbiamo pensato ad alcune opzioni per organizzare i pasti durante il vostro soggiorno, combinando comodità in appartamento e scoperte culinarie locali.</p>
 
-            <div class="meal-plan-grid"> <div class="meal-plan-block">
+            <div class="meal-plan-grid"> 
+                <div class="meal-plan-block">
                     <h4>Colazione (ogni giorno, in appartamento)</h4>
                     <ul>
                         <li>Yogurt greco o latte con cereali</li>
@@ -48,7 +329,8 @@
                     </ul>
                 </div>
 
-                <div class="meal-plan-block large-item"> <h4>Pranzo</h4>
+                <div class="meal-plan-block large-item"> 
+                    <h4>Pranzo</h4>
                     <div class="two-column-layout">
                         <div class="column-item">
                             <h5>Se siete a Sliema o tornate in appartamento:</h5>
@@ -98,7 +380,15 @@
                         <li>Detergenti base da cucina se non forniti</li>
                     </ul>
                 </div>
-            </div> </section>
+            </div> 
+        </section>
+
+        <!-- Nuovo pulsante per aprire la lista della spesa -->
+        <section class="content-section" style="text-align: center;">
+            <button id="openGroceryModalBtn" class="btn">
+                <i class="fas fa-shopping-basket"></i> La Tua Lista della Spesa
+            </button>
+        </section>
 
         <section class="content-section">
             <h3>Piatti Tipici Maltesi da Provare</h3>
@@ -131,7 +421,7 @@
 
             <div class="food-item">
                 <h4><i class="fas fa-hotdog"></i> Bragioli</h4>
-                <p>Involtini di carne ripieni di uova sode, prezzemolo e pangrattato, cotti in salsa.</p>
+                <p>Involtini di carne ripieni di uova sode, prezzemelo e pangrattato, cotti in salsa.</p>
             </div>
 
             <div class="food-item">
@@ -163,11 +453,385 @@
     <footer>
         <div class="footer-content">
             <p>© 2025 MALTA 2025 - Il Mio Diario di Viaggio. Tutti i diritti riservati.</p>
+            <div class="social-links">
+                <a href="#" target="_blank" aria-label="Seguimi su Instagram"><i class="fab fa-instagram"></i></a>
+                <a href="#" target="_blank" aria-label="Seguimi su Facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" target="_blank" aria-label="Seguimi su Twitter"><i class="fab fa-x-twitter"></i></a>
+            </div>
         </div>
     </footer>
 
     <button id="scrollToTopBtn" title="Torna su">⬆</button>
 
+    <!-- Modale per la Lista della Spesa -->
+    <div id="groceryModalOverlay" class="grocery-modal-overlay">
+        <div class="grocery-modal-content">
+            <button class="grocery-modal-close-btn" id="groceryModalCloseBtn">&times;</button>
+            <h3>La Tua Lista della Spesa</h3>
+
+            <div class="grocery-tabs">
+                <button class="grocery-tab-button active" data-tab="colazione">Colazione</button>
+                <button class="grocery-tab-button" data-tab="pranzo">Pranzo</button>
+                <button class="grocery-tab-button" data-tab="cena">Cena</button>
+            </div>
+
+            <div id="colazioneTabContent" class="grocery-tab-content active">
+                <div class="grocery-input-container">
+                    <input type="text" id="colazioneInput" placeholder="Aggiungi elemento per la colazione..." aria-label="Aggiungi elemento per la colazione">
+                    <button id="addColazioneItemBtn">Aggiungi</button>
+                </div>
+                <ul id="colazioneList" class="grocery-list"></ul>
+                <button class="clear-list-btn" data-meal-type="colazione">Svuota Lista</button>
+            </div>
+
+            <div id="pranzoTabContent" class="grocery-tab-content">
+                <div class="grocery-input-container">
+                    <input type="text" id="pranzoInput" placeholder="Aggiungi elemento per il pranzo..." aria-label="Aggiungi elemento per il pranzo">
+                    <button id="addPranzoItemBtn">Aggiungi</button>
+                </div>
+                <ul id="pranzoList" class="grocery-list"></ul>
+                <button class="clear-list-btn" data-meal-type="pranzo">Svuota Lista</button>
+            </div>
+
+            <div id="cenaTabContent" class="grocery-tab-content">
+                <div class="grocery-input-container">
+                    <input type="text" id="cenaInput" placeholder="Aggiungi elemento per la cena..." aria-label="Aggiungi elemento per la cena">
+                    <button id="addCenaItemBtn">Aggiungi</button>
+                </div>
+                <ul id="cenaList" class="grocery-list"></ul>
+                <button class="clear-list-btn" data-meal-type="cena">Svuota Lista</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="downloadGroceryPdfBtn" class="btn">
+                    <i class="fas fa-file-pdf"></i> Scarica Lista Spesa PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spinner di caricamento -->
+    <div id="loadingSpinner" style="display: none;"></div>
+
+    <!-- Contenitore temporaneo per la generazione del PDF (nascosto) - NON PIÙ USATO PER IL PDF DELLA LISTA SPESA -->
+    <div id="pdfHiddenContent" style="display: none;">
+        <div id="pdfRenderTarget"></div>
+    </div>
+
     <script src="../js/script.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const openGroceryModalBtn = document.getElementById('openGroceryModalBtn');
+    const groceryModalOverlay = document.getElementById('groceryModalOverlay');
+    const groceryModalCloseBtn = document.getElementById('groceryModalCloseBtn');
+    const downloadGroceryPdfBtn = document.getElementById('downloadGroceryPdfBtn');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    // pdfRenderTarget non è più usato per la generazione del PDF della lista spesa
+    // const pdfRenderTarget = document.getElementById('pdfRenderTarget'); 
+
+    const tabButtons = document.querySelectorAll('.grocery-tab-button');
+    const tabContents = document.querySelectorAll('.grocery-tab-content');
+
+    const colazioneInput = document.getElementById('colazioneInput');
+    const pranzoInput = document.getElementById('pranzoInput');
+    const cenaInput = document.getElementById('cenaInput');
+
+    const addColazioneItemBtn = document.getElementById('addColazioneItemBtn');
+    const addPranzoItemBtn = document.getElementById('addPranzoItemBtn');
+    const addCenaItemBtn = document.getElementById('addCenaItemBtn');
+
+    const colazioneList = document.getElementById('colazioneList');
+    const pranzoList = document.getElementById('pranzoList');
+    const cenaList = document.getElementById('cenaList');
+
+    const clearListButtons = document.querySelectorAll('.clear-list-btn');
+
+    const groceryListKey = 'malta_grocery_list';
+
+    let groceryData = {
+        colazione: [],
+        pranzo: [],
+        cena: []
+    };
+
+    const openModal = () => {
+        groceryModalOverlay.classList.add('active');
+        loadGroceryData();
+        renderAllLists();
+        activateTab('colazione');
+    };
+
+    const closeModal = () => {
+        groceryModalOverlay.classList.remove('active');
+        saveGroceryData();
+    };
+
+    const activateTab = (tabName) => {
+        tabButtons.forEach(button => {
+            button.classList.toggle('active', button.dataset.tab === tabName);
+        });
+        tabContents.forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}TabContent`);
+        });
+    };
+
+    const saveGroceryData = () => {
+        localStorage.setItem(groceryListKey, JSON.stringify(groceryData));
+    };
+
+    const loadGroceryData = () => {
+        const savedData = localStorage.getItem(groceryListKey);
+        if (savedData) {
+            try {
+                const parsedData = JSON.parse(savedData);
+                // Ensure all meal types exist and filter out empty items
+                for (const mealType of ['colazione', 'pranzo', 'cena']) {
+                    if (parsedData[mealType] && Array.isArray(parsedData[mealType])) {
+                        parsedData[mealType] = parsedData[mealType].filter(item => typeof item === 'object' && item !== null && item.text && item.text.trim() !== '');
+                    } else {
+                        parsedData[mealType] = []; // Initialize if missing or not an array
+                    }
+                }
+                groceryData = parsedData;
+            } catch (e) {
+                console.error("Error parsing grocery data from localStorage, resetting:", e);
+                groceryData = { colazione: [], pranzo: [], cena: [] }; // Reset if data is corrupt
+            }
+        } else {
+            groceryData = { colazione: [], pranzo: [], cena: [] }; // Initialize if no data found
+        }
+    };
+
+    const renderListItem = (item, mealType, index) => {
+        const li = document.createElement('li');
+        li.className = item.checked ? 'completed' : '';
+        li.dataset.index = index;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = item.checked;
+        checkbox.addEventListener('change', () => toggleItemCompleted(mealType, index));
+
+        const label = document.createElement('label');
+        label.textContent = item.text;
+        label.prepend(checkbox);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-item-btn';
+        removeBtn.textContent = 'Rimuovi';
+        removeBtn.addEventListener('click', () => removeItem(mealType, index));
+
+        li.appendChild(label);
+        li.appendChild(removeBtn);
+        return li;
+    };
+
+    const renderList = (mealType) => {
+        const listContainer = document.getElementById(`${mealType}List`);
+        listContainer.innerHTML = '';
+        groceryData[mealType].forEach((item, index) => {
+            listContainer.appendChild(renderListItem(item, mealType, index));
+        });
+    };
+
+    const renderAllLists = () => {
+        renderList('colazione');
+        renderList('pranzo');
+        renderList('cena');
+    };
+
+    const addItem = (mealType, inputElement) => {
+        const text = inputElement.value.trim();
+        if (text) {
+            groceryData[mealType].push({ text, checked: false });
+            inputElement.value = '';
+            renderList(mealType);
+            saveGroceryData();
+        }
+    };
+
+    const toggleItemCompleted = (mealType, index) => {
+        if (groceryData[mealType][index]) {
+            groceryData[mealType][index].checked = !groceryData[mealType][index].checked;
+            renderList(mealType);
+            saveGroceryData();
+        }
+    };
+
+    const removeItem = (mealType, index) => {
+        const confirmation = confirm(`Sei sicuro di voler rimuovere "${groceryData[mealType][index].text}" dalla lista?`);
+        if (confirmation) {
+            groceryData[mealType].splice(index, 1);
+            renderList(mealType);
+            saveGroceryData();
+        }
+    };
+
+    const clearList = (mealType) => {
+        const confirmation = confirm(`Sei sicuro di voler svuotare la lista della ${mealType}?`);
+        if (confirmation) {
+            groceryData[mealType] = [];
+            renderList(mealType);
+            saveGroceryData();
+        }
+    };
+
+    // Funzione per il Download PDF con jsPDF diretto
+    downloadGroceryPdfBtn.addEventListener('click', async () => {
+        loadingSpinner.style.display = 'block';
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4'); // Inizializza jsPDF (portrait, mm, A4)
+
+        const margin = 20; // Margine su tutti i lati
+        let yOffset = margin; // Inizia l'offset Y dal margine superiore
+        const lineHeight = 7; // Altezza di riga per gli elementi della lista
+        const titleLineHeight = 10; // Altezza di riga per i titoli di sezione
+        const maxPageHeight = pdf.internal.pageSize.getHeight() - margin; // Altezza massima della pagina
+
+        // Titolo principale
+        pdf.setFont('Oswald', 'bold');
+        pdf.setFontSize(24);
+        pdf.setTextColor('#1a237e');
+        pdf.text('Lista della Spesa per Malta', pdf.internal.pageSize.getWidth() / 2, yOffset, { align: 'center' });
+        yOffset += 10; // Spazio dopo il titolo
+        
+        // Data di generazione
+        pdf.setFont('Roboto', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor('#555');
+        pdf.text(`Generata il ${new Date().toLocaleDateString('it-IT')}`, pdf.internal.pageSize.getWidth() / 2, yOffset, { align: 'center' });
+        yOffset += 15; // Spazio dopo la data
+
+        const addSection = (mealType, title) => {
+            if (groceryData[mealType] && groceryData[mealType].length > 0) {
+                // Controlla se c'è abbastanza spazio per il titolo della sezione + almeno un elemento
+                if (yOffset + titleLineHeight + lineHeight > maxPageHeight) {
+                    pdf.addPage();
+                    yOffset = margin; // Reset yOffset per la nuova pagina
+                }
+
+                // Aggiungi il titolo della sezione
+                pdf.setFont('Oswald', 'bold');
+                pdf.setFontSize(16);
+                pdf.setTextColor('#3f51b5');
+                pdf.text(title, margin, yOffset);
+                yOffset += titleLineHeight; // Spazio dopo il titolo della sezione
+                
+                pdf.setDrawColor('#eee'); // Colore per la linea
+                pdf.line(margin, yOffset - 2, pdf.internal.pageSize.getWidth() - margin, yOffset - 2); // Linea sotto il titolo
+                yOffset += 5; // Spazio dopo la linea
+
+                // Aggiungi gli elementi della lista
+                pdf.setFont('Roboto', 'normal');
+                pdf.setFontSize(10);
+                pdf.setTextColor('#000');
+
+                groceryData[mealType].forEach(item => {
+                    // Aggiungi un controllo per assicurarti che l'elemento non sia vuoto
+                    if (item.text.trim() !== '') {
+                        // Disegna il riquadro della checkbox
+                        const checkboxSize = 4; // Dimensione del lato del quadrato in mm
+                        const checkboxX = margin;
+                        // Calcola la posizione Y del riquadro per centrarlo verticalmente rispetto alla linea di testo
+                        const checkboxY = yOffset - (lineHeight / 2) + (checkboxSize / 2) - 1; // Spostato di 1mm più in alto
+                        
+                        pdf.setDrawColor(0); // Colore del bordo nero
+                        pdf.setLineWidth(0.5); // Spessore del bordo
+                        pdf.rect(checkboxX, checkboxY, checkboxSize, checkboxSize); // Disegna il quadrato
+
+                        // Disegna il segno di spunta se l'elemento è spuntato
+                        if (item.checked) {
+                            pdf.setFontSize(14); // Dimensione del font per il tickmark
+                            pdf.setTextColor('#28a745'); // Colore verde per il tickmark
+                            // Posiziona il tickmark leggermente dentro il quadrato
+                            // Regolazione della Y per un centraggio visivo migliore
+                            pdf.text('\u2713', checkboxX + checkboxSize / 2, checkboxY + checkboxSize / 2 + 2.8, { align: 'center' }); // Tickmark (✓)
+                            pdf.setTextColor('#000'); // Ripristina il colore del testo
+                            pdf.setFontSize(10); // Ripristina la dimensione del font
+                        }
+
+                        const itemText = item.text;
+
+                        // Dividi il testo se è troppo lungo
+                        const textX = margin + checkboxSize + 4; // Posizione X del testo, dopo la checkbox e un po' di spazio
+                        const textWidth = pdf.internal.pageSize.getWidth() - textX - margin;
+                        const textLines = pdf.splitTextToSize(itemText, textWidth);
+
+                        // Calcola l'altezza totale necessaria per questo elemento (checkbox + testo)
+                        const itemHeightNeeded = textLines.length * lineHeight;
+
+                        // Controlla se l'elemento intero può stare sulla pagina
+                        if (yOffset + itemHeightNeeded > maxPageHeight) {
+                            pdf.addPage();
+                            yOffset = margin; // Reset yOffset per la nuova pagina
+                            // Ridrawing the checkbox and tickmark on the new page
+                            pdf.setDrawColor(0);
+                            pdf.setLineWidth(0.5);
+                            pdf.rect(checkboxX, yOffset - (lineHeight / 2) + (checkboxSize / 2) - 1, checkboxSize, checkboxSize); // Spostato di 1mm più in alto
+                            if (item.checked) {
+                                pdf.setFontSize(14);
+                                pdf.setTextColor('#28a745');
+                                pdf.text('\u2713', checkboxX + checkboxSize / 2, yOffset - (lineHeight / 2) + (checkboxSize / 2) + 2.8, { align: 'center' });
+                                pdf.setTextColor('#000');
+                                pdf.setFontSize(10);
+                            }
+                        }
+
+                        // Disegna il testo dell'elemento
+                        if (item.checked) {
+                            pdf.setTextColor('#555'); // Colore per testo completato
+                            pdf.text(textLines, textX, yOffset, {
+                                isStringArray: true, // Indica che è un array di stringhe
+                                decoration: 'line-through' // Aggiungi barrato
+                            });
+                        } else {
+                            pdf.setTextColor('#000'); // Colore normale
+                            pdf.text(textLines, textX, yOffset);
+                        }
+                        
+                        yOffset += itemHeightNeeded; // Aggiorna l'offset Y
+                    }
+                });
+                yOffset += 10; // Spazio extra dopo ogni sezione
+            }
+        };
+
+        addSection('colazione', 'Colazione');
+        addSection('pranzo', 'Pranzo');
+        addSection('cena', 'Cena');
+
+        pdf.save(`Lista_Spesa_Malta_${new Date().toLocaleDateString('it-IT')}.pdf`);
+        loadingSpinner.style.display = 'none';
+    });
+
+    // Event listeners
+    openGroceryModalBtn.addEventListener('click', openModal);
+    groceryModalCloseBtn.addEventListener('click', closeModal);
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => activateTab(button.dataset.tab));
+    });
+
+    addColazioneItemBtn.addEventListener('click', () => addItem('colazione', colazioneInput));
+    addPranzoItemBtn.addEventListener('click', () => addItem('pranzo', pranzoInput));
+    addCenaItemBtn.addEventListener('click', () => addItem('cena', cenaInput));
+
+    colazioneInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addItem('colazione', colazioneInput); });
+    pranzoInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addItem('pranzo', pranzoInput); });
+    cenaInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addItem('cena', cenaInput); });
+
+    clearListButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            const mealType = e.target.dataset.mealType;
+            clearList(mealType);
+        });
+    });
+
+    loadGroceryData();
+    renderAllLists();
+});
+</script>
+
 </body>
 </html>
