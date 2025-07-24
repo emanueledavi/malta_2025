@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="../css/style.css">
+    <!-- Assicurati che Font Awesome sia linkato per le icone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
     <header>
@@ -92,16 +94,16 @@
             </div>
         </section>
 
-
-        <section class="quick-links">
-            
+        <!-- Sezione Quick Links -->
+        <section class="quick-links" aria-labelledby="quick-links-heading">
+            <h3 id="quick-links-heading">Approfondimenti</h3>
             <div class="links-grid">
                 <a href="../documenti/aereo.html" class="link-item">
-                    <i class="fas fa-route"></i>
+                    <i class="fas fa-plane"></i> <!-- Ho cambiato l'icona da fa-route a fa-plane, più appropriata per "Aereo" -->
                     <span>Documenti Aereo</span>
                 </a>
                 <a href="../documenti/casa.html" class="link-item">
-                    <i class="fas fa-info-circle"></i>
+                    <i class="fas fa-home"></i> <!-- Ho cambiato l'icona da fa-info-circle a fa-home, più appropriata per "Casa" -->
                     <span>Documenti Casa</span>
                 </a>
             </div>
@@ -112,11 +114,6 @@
     <footer>
         <div class="footer-content">
             <p>© 2025 MALTA 2025 - Il Mio Diario di Viaggio. Tutti i diritti riservati.</p>
-            <div class="social-links">
-                <a href="#" target="_blank" aria-label="Seguimi su Instagram"><i class="fab fa-instagram"></i></a>
-                <a href="#" target="_blank" aria-label="Seguimi su Facebook"><i class="fab fa-facebook-f"></i></a>
-                <a href="#" target="_blank" aria-label="Seguimi su Twitter"><i class="fab fa-x-twitter"></i></a>
-            </div>
         </div>
     </footer>
 
